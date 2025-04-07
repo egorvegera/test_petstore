@@ -1,0 +1,55 @@
+name: Generate and Deploy Allure Report
+
+on:
+  push:
+    branches: [ main ]  # Запуск при пуше в main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Чекаут кода
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Установка Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      # Установка зависимостей
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest allure-pytest requests
+
+      # Запуск тестов
+      - name: Run tests
+        run: |
+          pytest test_petstore.py --alluredir=allure-results
+
+      # Установка Java и Allure
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+      - name: Install Allure
+        run: |
+          wget -q https://github.com/allure-framework/allure2/releases/download/2.30.0/allure-2.30.0.tgz
+          tar -xzf allure-2.30.0.tgz -C /opt/
+          sudo ln -s /opt/allure-2.30.0/bin/allure /usr/bin/allure
+          allure --version
+
+      # Генерация отчета
+      - name: Generate Allure Report
+        run: |
+          allure generate allure-results -o allure-report --clean
+
+      # Деплой на GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./allure-report
+          publish_branch: gh-pages
